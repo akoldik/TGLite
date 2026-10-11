@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>
+:root{color-scheme:dark;--bg:#0f172a;--panel:#172033;--line:#273449;--blue:#3b82f6;--muted:#9aa9bf}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f1f5f9;font:15px system-ui, sans-serif}
+header{height:58px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;background:#111c30;border-bottom:1px solid var(--line);font-weight:700;font-size:18px}
+button{border:0;border-radius:12px;background:var(--blue);color:white;padding:12px 14px;font:inherit;font-weight:600}
+input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:white;font:inherit;outline:none}
+#login{padding:24px;display:grid;gap:12px}#login h2{margin:8px 0}#status{color:var(--muted);font-size:13px}
+#layout{height:calc(100dvh - 58px);display:flex;flex-direction:column}
+#chats{overflow:auto;flex:1}.chat{padding:15px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center}
+.avatar{width:42px;height:42px;border-radius:50%;background:#243754;display:grid;place-items:center;font-weight:700;color:#c7dcff;flex-shrink:0}
+.chatname{font-weight:650}.sub{font-size:12px;color:var(--muted);margin-top:4px}.badge{margin-left:auto;background:#254a7c;border-radius:20px;padding:3px 8px;font-size:12px}
+#conversation{display:none;flex:1;min-height:0;flex-direction:column}#chathead{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+#back{background:transparent;padding:8px 4px;font-size:22px}#messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;background:#202c40;align-self:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.out{align-self:flex-end;background:#2359a8}.sender{font-size:12px;color:#a9caff;margin-bottom:4px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.composer input{flex:1;min-width:0}.composer button{padding:0 16px}.hidden{display:none!important}
+</style></head>
+<body>
+<header><span>✦ TGLite</span><span id="refresh" onclick="refreshCurrent()" style="font-size:20px">↻</span></header>
+<div id="login">
+<h2 id="loginTitle">Подключение…</h2><div id="status">Подключаемся к Telegram</div>
+<input id="field" placeholder="Номер телефона" autocomplete="off">
+<button id="action" onclick="loginAction()">Продолжить</button>
+</div>
+<div id="layout" class="hidden">
+<div id="chats"></div>
+<div id="conversation">
+<div id="chathead"><button id="back" onclick="backToChats()">‹</button><div><div id="chatTitle" class="chatname"></div><div class="sub" id="chatKind"></div></div></div>
+<div id="messages"></div>
+<form class="composer" onsubmit="sendMessage(event)"><input id="messageText" placeholder="Сообщение…" autocomplete="off"><button>➤</button></form>
+</div></div>
+<script>
+let loginState='phone', currentChat=null, chatsCache=[], lastMessageSignature='';
+const $=id=>document.getElementById(id);
+function parse(s){try{return JSON.parse(s)}catch(e){return {ok:false,error:String(s)}}}
+function status(s){$('status').textContent=s}
+function showError(r){status(r.error||'Неизвестная ошибка')}
+function setLogin(state){
+ loginState=state;
+ $('field').value='';
+ if(state==='phone'){$('loginTitle').textContent='Войти в Telegram';$('field').placeholder='Номер телефона с кодом страны';$('action').textContent='Получить код';$('field').type='tel'}
+ else if(state==='code'){$('loginTitle').textContent='Код подтверждения';$('field').placeholder='Код из Telegram';$('action').textContent='Войти';$('field').type='text'}
+ else {$('loginTitle').textContent='Пароль 2FA';$('field').placeholder='Пароль двухэтапной проверки';$('action').textContent='Подтвердить';$('field').type='password'}
+}
+function loginAction(){
+ const value=$('field').value.trim(); if(!value)return;
+ $('action').disabled=true; status('Подождите…');
+ let r;
+ if(loginState==='phone')r=parse(Native.sendCode(value));
+ else if(loginState==='code')r=parse(Native.signIn(value));
+ else r=parse(Native.signInPassword(value));
+ $('action').disabled=false;
+ if(!r.ok){showError(r);return}
+ if(r.state==='need_code'){setLogin('code');status('Код отправлен в Telegram');return}
+ if(r.state==='need_password'){setLogin('password');status('Введите пароль 2FA');return}
+ if(r.state==='authorized'){enterApp();return}
+}
+function enterApp(){
+ $('login').classList.add('hidden');$('layout').classList.remove('hidden');$('chats').classList.remove('hidden');loadChats();
+}
+function init(){
+ let r=parse(Native.init());
+ if(!r.ok){status(r.error);setLogin('phone');return}
+ if(r.state==='authorized')enterApp();else{setLogin('phone');status('Введи номер телефона')}
+}
+function loadChats(){
+ const r=parse(Native.chats()); if(!r.ok){status(r.error||'Не удалось загрузить чаты');return}
+ chatsCache=r.chats||[];
+ if(currentChat)return;
+ $('chats').innerHTML='';
+ if(!chatsCache.length){$('chats').innerHTML='<div style="padding:24px;color:#9aa9bf">Чатов пока нет</div>';return}
+ for(const c of chatsCache){
+  const row=document.createElement('div');row.className='chat';row.onclick=()=>openChat(c);
+  const av=document.createElement('div');av.className='avatar';av.textContent=(c.name||'?').slice(0,1).toUpperCase();
+  const info=document.createElement('div');info.style.minWidth='0';info.style.flex='1';
+  const name=document.createElement('div');name.className='chatname';name.textContent=c.name;
+  const sub=document.createElement('div');sub.className='sub';sub.textContent=c.kind==='group'?'Группа':c.kind==='channel'?'Канал':'Личный чат';
+  info.append(name,sub);row.append(av,info);
+  if(c.unread){const b=document.createElement('span');b.className='badge';b.textContent=c.unread;row.append(b)}
+  $('chats').append(row);
+ }
+}
+function openChat(c){
+ currentChat=c;lastMessageSignature='';
+ $('chats').classList.add('hidden');$('conversation').style.display='flex';
+ $('chatTitle').textContent=c.name;$('chatKind').textContent=c.kind==='group'?'Группа':c.kind==='channel'?'Канал':'Личный чат';
+ loadMessages(true);
+}
+function loadMessages(force=false){
+ if(!currentChat)return;
+ const r=parse(Native.messages(currentChat.id));if(!r.ok)return;
+ const msgs=r.messages||[];const signature=msgs.map(m=>m.id).join(',');
+ if(!force&&signature===lastMessageSignature)return;lastMessageSignature=signature;
+ const box=$('messages');const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<100;
+ box.innerHTML='';
+ for(const m of msgs){
+  const el=document.createElement('div');el.className='msg'+(m.out?' out':'');
+  if(currentChat.kind==='group'||currentChat.kind==='channel'){
+   const sender=document.createElement('div');sender.className='sender';sender.textContent=m.sender;el.append(sender);
+  } else if(!m.out){
+   const sender=document.createElement('div');sender.className='sender';sender.textContent=m.sender;el.append(sender);
+  }
+  const body=document.createElement('div');body.textContent=m.text;el.append(body);box.append(el);
+ }
+ if(force||nearBottom)box.scrollTop=box.scrollHeight;
+}
+function sendMessage(e){
+ e.preventDefault();const inp=$('messageText');const text=inp.value.trim();if(!text||!currentChat)return;
+ const r=parse(Native.sendMessage(currentChat.id,text));if(!r.ok){status(r.error||'Ошибка отправки');return}
+ inp.value='';loadMessages(true);
+}
+function backToChats(){currentChat=null;$('conversation').style.display='none';$('chats').classList.remove('hidden');loadChats()}
+function refreshCurrent(){if(currentChat)loadMessages(true);else loadChats()}
+function goBackInApp(){if(currentChat)backToChats()}
+setInterval(()=>{if(!$('layout').classList.contains('hidden')){if(currentChat)loadMessages();else loadChats()}},4000);
+init();
+</script></body></html>

@@ -1,0 +1,23 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+}
+
+android {
+    namespace 'com.tglite.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.tglite.app'
+        minSdk 24
+        targetSdk 28
+        versionCode 1
+        versionName '1.0'
+        python {
+            version '3.11'
+            pip {
+                install 'telethon==1.42.0'
+            }
+        }
+    }
+}
