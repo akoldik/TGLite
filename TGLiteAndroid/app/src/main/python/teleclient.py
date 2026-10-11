@@ -5,7 +5,8 @@ from telethon.errors import SessionPasswordNeededError
 # Keep your existing API credentials here. Replace API_HASH yourself as planned.
 api_id = 21882615
 api_hash = "a55678cc05c1aad2fb0aaccbf9663241"
-session_name = "tglite"
+import os
+session_name = os.path.join(os.environ.get("HOME", "/data/data/com.tglite.app/files"), "tglite")
 
 _loop = asyncio.new_event_loop()
 _ready = threading.Event()
