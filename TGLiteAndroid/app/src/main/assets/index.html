@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <style>
-:root{color-scheme:dark;--bg:#0f172a;--panel:#172033;--line:#273449;--blue:#3b82f6;--muted:#9aa9bf}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f1f5f9;font:15px system-ui, sans-serif}
+:root{color-scheme:dark;--bg:#0f172a;--panel:#172033;--line:#273449;--blue:#3b82f6;--muted:#9aa9bf;--text:#f1f5f9;--bubble:#202c40;--out:#2359a8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui, sans-serif}
 header{height:58px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;background:#111c30;border-bottom:1px solid var(--line);font-weight:700;font-size:18px}
 button{border:0;border-radius:12px;background:var(--blue);color:white;padding:12px 14px;font:inherit;font-weight:600}
 input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:white;font:inherit;outline:none}
@@ -15,9 +15,22 @@ input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);ba
 .chatname{font-weight:650}.sub{font-size:12px;color:var(--muted);margin-top:4px}.badge{margin-left:auto;background:#254a7c;border-radius:20px;padding:3px 8px;font-size:12px}
 #conversation{display:none;flex:1;min-height:0;flex-direction:column}#chathead{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
 #back{background:transparent;padding:8px 4px;font-size:22px}#messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
-.msg{max-width:88%;padding:10px 12px;border-radius:14px;background:#202c40;align-self:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}
-.msg.out{align-self:flex-end;background:#2359a8}.sender{font-size:12px;color:#a9caff;margin-bottom:4px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;background:var(--bubble);align-self:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.out{align-self:flex-end;background:var(--out)}.sender{font-size:12px;color:#a9caff;margin-bottom:4px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);padding-bottom:calc(10px + env(safe-area-inset-bottom))}
 .composer input{flex:1;min-width:0}.composer button{padding:0 16px}.hidden{display:none!important}
+#layout{height:calc(100dvh - 58px - 64px)}
+#bottomNav{height:64px;display:none;grid-template-columns:repeat(3,1fr);background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+#bottomNav button{border-radius:0;background:transparent;color:var(--muted);padding:7px 2px;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+#bottomNav button.active{color:var(--blue);background:transparent} .navicon{font-size:21px;line-height:1}
+#page{display:none;flex:1;overflow:auto;padding:18px 16px} .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+.pageTitle{font-size:24px;font-weight:750;margin:4px 0 18px}.setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.setting:last-child{border-bottom:0}
+.setting small{display:block;color:var(--muted);margin-top:3px}.setting select,.setting input[type=color]{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px;max-width:48%}
+#customColors{display:grid;grid-template-columns:1fr 1fr;gap:10px}#customColors label{font-size:12px;color:var(--muted)}#customColors input{margin-top:5px;padding:4px;height:42px}
+body[data-theme="light"]{--bg:#f3f6fb;--panel:#fff;--line:#d9e1ed;--text:#172033;--muted:#617086;--bubble:#e5eaf2;--out:#cde2ff;color-scheme:light}
+body[data-theme="black"]{--bg:#000;--panel:#090909;--line:#242424;--text:#f5f5f5;--muted:#a3a3a3;--bubble:#181818;--out:#123d70;color-scheme:dark}
+body[data-theme="purple"]{--bg:#171126;--panel:#241938;--line:#3d2b55;--text:#f7f0ff;--muted:#c0aecf;--bubble:#302242;--out:#6239a8;color-scheme:dark}
+body[data-theme="green"]{--bg:#0d1d19;--panel:#142a23;--line:#28483b;--text:#edfff5;--muted:#a2c4b2;--bubble:#203b30;--out:#176447;color-scheme:dark}
+
 </style></head>
 <body>
 <header><span>✦ TGLite</span><span id="refresh" onclick="refreshCurrent()" style="font-size:20px">↻</span></header>
@@ -28,11 +41,13 @@ input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);ba
 </div>
 <div id="layout" class="hidden">
 <div id="chats"></div>
+<div id="page" class="hidden"></div>
 <div id="conversation">
 <div id="chathead"><button id="back" onclick="backToChats()">‹</button><div><div id="chatTitle" class="chatname"></div><div class="sub" id="chatKind"></div></div></div>
 <div id="messages"></div>
 <form class="composer" onsubmit="sendMessage(event)"><input id="messageText" placeholder="Сообщение…" autocomplete="off"><button>➤</button></form>
 </div></div>
+<nav id="bottomNav"><button id="navChats" class="active" onclick="showPage('chats')"><span class="navicon">▤</span>Чаты</button><button id="navDevelopers" onclick="showPage('developers')"><span class="navicon">♥</span>Разработчики</button><button id="navSettings" onclick="showPage('settings')"><span class="navicon">⚙</span>Настройки</button></nav>
 <script>
 let loginState='phone', currentChat=null, chatsCache=[], lastMessageSignature='';
 const $=id=>document.getElementById(id);
@@ -60,8 +75,29 @@ function loginAction(){
  if(r.state==='authorized'){enterApp();return}
 }
 function enterApp(){
- $('login').classList.add('hidden');$('layout').classList.remove('hidden');$('chats').classList.remove('hidden');loadChats();
+ $('login').classList.add('hidden');$('layout').classList.remove('hidden');$('chats').classList.remove('hidden');$('bottomNav').style.display='grid';applySavedTheme();loadChats();
 }
+function showPage(page){
+ $('conversation').style.display='none';$('page').classList.add('hidden');$('chats').classList.add('hidden');
+ ['navChats','navDevelopers','navSettings'].forEach(id=>$(id).classList.remove('active'));
+ if(page==='chats'){$('navChats').classList.add('active');$('chats').classList.remove('hidden');loadChats();return}
+ $('page').classList.remove('hidden');$(page==='developers'?'navDevelopers':'navSettings').classList.add('active');
+ if(page==='developers') renderDevelopers(); else renderSettings();
+}
+function renderDevelopers(){
+ $('page').innerHTML='<div class="pageTitle">Разработчики</div><div class="card"><div style="font-size:18px;font-weight:750">Главный разработчик</div><div style="margin-top:8px">akoldik <span style="color:var(--blue)">@akoldik_offic</span></div></div><div class="card"><div style="font-size:18px;font-weight:750">Огромное спасибо за поддержку проекта</div><div style="margin-top:8px">Л.Х.В.С <span style="color:var(--blue)">@Aslan_Usoyan_1</span></div></div><div style="color:var(--muted);font-size:12px;text-align:center;margin-top:22px">TGLite 1.0.0 preBETA:3</div>';
+}
+function renderSettings(){
+ $('page').innerHTML='<div class="pageTitle">Настройки</div><div class="card"><div style="font-weight:750;margin-bottom:8px">Оформление</div><div class="setting"><div>Тема<small>Выбери оформление приложения</small></div><select id="themeSelect" onchange="setTheme(this.value)"><option value="dark">Тёмная</option><option value="light">Светлая</option><option value="black">Чёрная AMOLED</option><option value="purple">Фиолетовая</option><option value="green">Зелёная</option><option value="custom">Своя тема</option></select></div><div id="customTheme" class="hidden"><p style="margin:14px 0 8px">Цвета своей темы</p><div id="customColors"><label>Фон<input id="cBg" type="color" value="#0f172a" onchange="saveCustomTheme()"></label><label>Панель<input id="cPanel" type="color" value="#172033" onchange="saveCustomTheme()"></label><label>Акцент<input id="cBlue" type="color" value="#3b82f6" onchange="saveCustomTheme()"></label><label>Текст<input id="cText" type="color" value="#f1f5f9" onchange="saveCustomTheme()"></label></div></div></div><div class="card"><div style="font-weight:750;margin-bottom:8px">Основное</div><div class="setting"><div>Версия приложения<small>Сборка предварительного тестирования</small></div><span>1.0.0 preBETA:3</span></div><div class="setting"><div>Обновление чатов<small>Как часто обновлять сообщения</small></div><select id="refreshRate" onchange="localStorage.setItem('tgliteRefresh',this.value);setRefresh()"><option value="4">4 секунды</option><option value="8">8 секунд</option><option value="15">15 секунд</option></select></div><div class="setting"><div>Вибрация интерфейса<small>Пока не поддерживается</small></div><input type="checkbox" disabled></div></div><button style="width:100%" onclick="showPage('chats')">Готово</button>';
+ $('themeSelect').value=localStorage.getItem('tgliteTheme')||'dark';$('refreshRate').value=localStorage.getItem('tgliteRefresh')||'4';$('customTheme').classList.toggle('hidden',$('themeSelect').value!=='custom');loadCustomColors();
+}
+function setTheme(theme){localStorage.setItem('tgliteTheme',theme);$('customTheme')?.classList.toggle('hidden',theme!=='custom');applySavedTheme();}
+function applySavedTheme(){let t=localStorage.getItem('tgliteTheme')||'dark';document.body.dataset.theme=t==='custom'?'dark':t;if(t==='custom')applyCustomTheme();}
+function loadCustomColors(){for(const id of ['cBg','cPanel','cBlue','cText']){const v=localStorage.getItem('tglite_'+id);if(v&&$(id))$(id).value=v;}applyCustomTheme();}
+function saveCustomTheme(){for(const id of ['cBg','cPanel','cBlue','cText'])localStorage.setItem('tglite_'+id,$(id).value);localStorage.setItem('tgliteTheme','custom');$('themeSelect').value='custom';applySavedTheme();}
+function applyCustomTheme(){if((localStorage.getItem('tgliteTheme')||'dark')!=='custom')return;const map={cBg:'--bg',cPanel:'--panel',cBlue:'--blue',cText:'--text'};for(const id in map){const v=localStorage.getItem('tglite_'+id);if(v)document.documentElement.style.setProperty(map[id],v);}document.documentElement.style.setProperty('--line',localStorage.getItem('tglite_cPanel')||'#273449');}
+function setRefresh(){clearInterval(window.tgliteTimer);window.tgliteTimer=setInterval(()=>{if(!$('layout').classList.contains('hidden')){if(currentChat)loadMessages();else if(!$('chats').classList.contains('hidden'))loadChats()}},Number(localStorage.getItem('tgliteRefresh')||4)*1000)}
+
 function init(){
  let r=parse(Native.init());
  if(!r.ok){status(r.error);setLogin('phone');return}
@@ -116,6 +152,6 @@ function sendMessage(e){
 function backToChats(){currentChat=null;$('conversation').style.display='none';$('chats').classList.remove('hidden');loadChats()}
 function refreshCurrent(){if(currentChat)loadMessages(true);else loadChats()}
 function goBackInApp(){if(currentChat)backToChats()}
-setInterval(()=>{if(!$('layout').classList.contains('hidden')){if(currentChat)loadMessages();else loadChats()}},4000);
+setRefresh();
 init();
 </script></body></html>
